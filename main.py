@@ -10,7 +10,7 @@ def calculate_distance(articles):
     
     return total_distance
 
-def fcfs_algorithm(orders):
+def fcfs_algorithm(orders, n_capacidad):
     lotes = []
     lote_actual = []
     capacidad_actual = 0
@@ -18,13 +18,13 @@ def fcfs_algorithm(orders):
     
     for orden, capacidad, articles in orders:
         distancia_total += calculate_distance(articles)
-        if capacidad_actual + capacidad <= 25:
+        if capacidad_actual + capacidad <= n_capacidad:
             lote_actual.append((orden, capacidad, articles))
             capacidad_actual += capacidad
         else:
             lote_encontrado = False
             for lote in lotes:
-                if sum([capacidad for _, capacidad, _ in lote]) + capacidad <= 25:
+                if sum([capacidad for _, capacidad, _ in lote]) + capacidad <= n_capacidad:
                     lote.append((orden, capacidad, articles))
                     capacidad_actual += capacidad
                     lote_encontrado = True
@@ -39,16 +39,16 @@ def fcfs_algorithm(orders):
     
     return lotes, distancia_total
 
-def generate_orders(num_ordenes):
+def generate_orders(num_ordenes, n_capacidad):
     orders = []
     for i in random.sample(range(1, num_ordenes + 1), num_ordenes):
-        capacidad = random.randint(3, 25)
+        capacidad = random.randint(3, n_capacidad)
         articles = random.sample(range(1, 901), capacidad)
         orders.append((i, capacidad, articles))
     return orders
 
 def fitness(individual):
-    _, distancia_total = fcfs_algorithm(individual)
+    _, distancia_total = fcfs_algorithm(individual, n_capacidad)
     return distancia_total
 
 def select_parents(population, fitness_values, n_parents):
@@ -79,49 +79,58 @@ def mutate(individual):
         index2 = random.randint(0, len(individual) - 1)
         individual[index1], individual[index2] = individual[index2], individual[index1]
 
-# Parámetros iniciales
-num_ordenes = 20
-n_poblacion = int(20 + num_ordenes / 2)
-n_parents = int(n_poblacion * 0.9)
-n_iterations = int(40 + num_ordenes / 3)
-
-# Generar población inicial (listas de órdenes sin pesos ni items)
-population = [generate_orders(num_ordenes) for _ in range(n_poblacion)]
-
 def create_population_sin_pesos(population_):
     return [[orden for orden, _, _ in lista] for lista in population_]
 
+# Lista de combinaciones de parámetros iniciales
+param_combinations = [
+    (20, 25), (20, 50), (20, 100),
+    (40, 25), (40, 50), (40, 100),
+    (80, 25), (80, 50), (80, 100),
+    (100, 25), (100, 50), (100, 100)
+]
 
-# Crear archivo de texto
-output_file = open("genetic_algorithm_results.txt", "w")
+for params in param_combinations:
+    # Parámetros iniciales
+    num_ordenes, n_capacidad = params
+    n_poblacion = int(20 + num_ordenes / 2)
+    n_parents = int(n_poblacion * 0.9)
+    n_iterations = int(40 + num_ordenes / 3)
 
-# Algoritmo genético
-for iteration in range(n_iterations):
-    fitness_values = [fitness(individual) for individual in population]
-    parents = select_parents(population, fitness_values, n_parents)
-    next_population = parents.copy()
+    # Generar población inicial (listas de órdenes sin pesos ni items)
+    population = [generate_orders(num_ordenes, n_capacidad) for _ in range(n_poblacion)]
 
-    # Detalles de la iteración
-    output_file.write(f"Iteracion {iteration + 1}:\n")
-    output_file.write("Poblacion:\n")
-    
-    for i, individual in enumerate(create_population_sin_pesos(population)):
-        output_file.write(f"Individuo {i + 1}: {individual} - Fitness: {fitness_values[i]}\n")
+    # Crear archivo de texto
+    output_file = open(f"genetic_algorithm_results_{num_ordenes}_{n_capacidad}.txt", "w")
 
-    while len(next_population) < n_poblacion:
-        parent1 = random.choice(parents)
-        parent2 = random.choice(parents)
-        output_file.write(f"Seleccion de padres: {parent1} y {parent2}\n")
-        child1, child2 = crossover(parent1, parent2)
-        mutate(child1)
-        mutate(child2)
-        next_population.append(child1)
-        next_population.append(child2)
-        output_file.write(f"Cruzamiento y mutacion: {child1} y {child2}\n")
+    # Algoritmo genético
+    for iteration in range(n_iterations):
+        fitness_values = [fitness(individual) for individual in population]
+        parents = select_parents(population, fitness_values, n_parents)
+        next_population = parents.copy()
 
-    population = next_population
+        # Detalles de la iteración
+        output_file.write(f"Iteracion {iteration + 1}:\n")
+        output_file.write("Poblacion:\n")
+        
+        for i, individual in enumerate(create_population_sin_pesos(population)):
+            output_file.write(f"Individuo {i + 1}: {individual} - Fitness: {fitness_values[i]}\n")
 
-# Cerrar archivo de texto
-output_file.close()
+        while len(next_population) < n_poblacion:
+            parent1 = random.choice(parents)
+            parent2 = random.choice(parents)
+            output_file.write(f"Seleccion de padres: {parent1} y {parent2}\n")
+            child1, child2 = crossover(parent1, parent2)
+            mutate(child1)
+            mutate(child2)
+            next_population.append(child1)
+            next_population.append(child2)
+            output_file.write(f"Cruzamiento y mutacion: {child1} y {child2}\n")
 
-print("Proceso completado. Se ha generado el archivo 'genetic_algorithm_results.txt'.")
+        population = next_population
+
+    # Cerrar archivo de texto
+    output_file.close()
+
+    print(f"Proceso completado para num_ordenes = {num_ordenes}, n_capacidad = {n_capacidad}.")
+
